@@ -1,6 +1,14 @@
 # justunzip
 CLI tool to just unzip a truncated or partially corrupt zipfile
 
+## Installation
+
+```
+pip install justunzip
+```
+
+## Usage
+
 ```console
 user@bar:~$ unzip -l test.zip 
 Archive:  test.zip
