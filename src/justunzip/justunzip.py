@@ -11,14 +11,19 @@ import zlib
 import logging
 import click
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 
 
-def decompress(filename):
+def decompress(archive_filename, dry_run):
     """
     Decompress `filename` into current directory.
     """
-    with open(filename, "rb") as f:
+    with open(archive_filename, "rb") as f:
+        print(f"Archive: {archive_filename}")
+
+        if dry_run:
+            print(f"{'Length':10s} Name")
+            print(f"{'-'*10} {'-'*4}")
         while chunk := f.read(4):
             if len(chunk) < 4:
                 break
@@ -27,7 +32,7 @@ def decompress(filename):
                 f.seek(-3, 1)
                 continue
 
-            logging.info(f"found header @ 0x{f.tell() - 4:x}")
+            logging.debug(f"found header @ 0x{f.tell() - 4:x}")
 
             chunk = f.read(2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2)
             header = struct.unpack("<hhhHHLllhh", chunk)
@@ -43,8 +48,11 @@ def decompress(filename):
             if extra_len > 0:
                 f.read(extra_len)
 
-            logging.info(f"{filename}")
             os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+            if dry_run:
+                print(f"{decompressed_size:10d} {filename.decode('ascii'):s}")
+                continue
 
             if compressed_size == 0:
                 continue
@@ -59,17 +67,19 @@ def decompress(filename):
                         contents, wbits=-zlib.MAX_WBITS, bufsize=decompressed_size
                     )
                 except zlib.error as e:
-                    logging.exception(f"error decompressing {filename}")
+                    logging.error(f"error decompressing {filename}")
 
+            print(f"creating: {filename.decode('ascii'):s}")
             with open(filename, "wb") as new_file:
                 new_file.write(contents)
 
 
 @click.command()
+@click.option("-l", "--dry_run", is_flag=True, default=False)
 @click.argument("filenames", nargs=-1, required=True)
-def main(filenames):
+def main(filenames, dry_run):
     for filename in filenames:
         try:
-            decompress(filename)
+            decompress(filename, dry_run)
         except Exception as ex:
             logging.exception(f"Error with file: '{filename}'")
