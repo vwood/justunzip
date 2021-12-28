@@ -48,11 +48,14 @@ def decompress(archive_filename, dry_run):
             if extra_len > 0:
                 f.read(extra_len)
 
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
-
             if dry_run:
                 print(f"{decompressed_size:10d} {filename.decode('ascii'):s}")
                 continue
+
+            if len(filename) == 0:
+                continue
+            
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
 
             if compressed_size == 0:
                 continue
