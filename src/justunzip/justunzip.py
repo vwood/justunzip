@@ -4,6 +4,7 @@
 CLI script to unzip truncated or corrupt zip files
 """
 
+import mmap
 import struct
 import os
 import sys
@@ -29,35 +30,41 @@ class ZipLocalFileHeader:
     extra_field_length: int
 
 
+HEADER_SIZE = 2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2
+
+
 def decompress(archive_filename, dry_run):
     """
     Decompress `filename` into current directory.
     """
-    with open(archive_filename, "rb") as f:
+    with open(archive_filename, "rb") as f,
+         mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+         
+        pos = 0
+
         print(f"Archive: {archive_filename}")
 
         if dry_run:
             print(f"{'Length':10s} Name")
             print(f"{'-'*10} {'-'*4}")
 
-        while chunk := f.read(4):
-            if len(chunk) < 4:
-                break
+        while (pos := mm.find(b"PK\x03\x04", pos)) != -1:
+            logging.debug(f"found header @ 0x{pos:x}")
 
-            if chunk != b"PK\x03\x04":
-                f.seek(-3, 1)
-                continue
+            pos += 4
 
-            logging.debug(f"found header @ 0x{f.tell() - 4:x}")
+            chunk = mm[pos : pos + HEADER_SIZE]
+            pos += HEADER_SIZE
 
-            chunk = f.read(2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2)
             header = ZipLocalFileHeader(*struct.unpack("<hhhHHLllhh", chunk))
 
             is_deflated = header.compression_method == 8
 
-            filename = f.read(header.filename_length)
+            filename = mm[pos : pos + header.filename_length]
+            pos += header.filename_length
+
             if header.extra_field_length > 0:
-                f.read(header.extra_field_length)
+                pos += header.extra_field_length
 
             if dry_run:
                 print(f"{header.uncompressed_size:10d} {filename.decode('ascii'):s}")
@@ -68,9 +75,15 @@ def decompress(archive_filename, dry_run):
                 os.makedirs(dirname, exist_ok=True)
 
             if header.compressed_size == 0:
-                continue
+                next_header = mm.find(b"PK\x03\x04", pos)
+                if next_header == -1:
+                    header.compressed_size = len(mm) - pos
+                else:
+                    header.compressed_size = next_header - pos
 
-            contents = f.read(header.compressed_size)
+            contents = mm[pos : pos + header.compressed_size]
+            pos += header.compressed_size
+
             if len(contents) < header.compressed_size:
                 logging.warn(f"{filename} is truncated")
 
