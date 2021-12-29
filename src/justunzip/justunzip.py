@@ -78,6 +78,7 @@ def decompress(archive_filename, dry_run):
                 next_header = mm.find(b"PK\x03\x04", pos)
                 if next_header == -1:
                     header.compressed_size = len(mm) - pos
+                    logging.warn(f"{filename} lacks a following header, and might be truncated")
                 else:
                     header.compressed_size = next_header - pos
 
