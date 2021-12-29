@@ -58,8 +58,6 @@ def decompress(archive_filename, dry_run):
 
             header = ZipLocalFileHeader(*struct.unpack("<hhhHHLllhh", chunk))
 
-            is_deflated = header.compression_method == 8
-
             filename = mm[pos : pos + header.filename_length]
             pos += header.filename_length
 
@@ -88,7 +86,7 @@ def decompress(archive_filename, dry_run):
             if len(contents) < header.compressed_size:
                 logging.warn(f"{filename} is truncated")
 
-            if is_deflated:
+            if header.compression_method == 8:
                 try:
                     contents = zlib.decompress(
                         contents,
@@ -97,6 +95,8 @@ def decompress(archive_filename, dry_run):
                     )
                 except zlib.error as e:
                     logging.error(f"error decompressing {filename}")
+            elif header.compression_method != 0:
+                logging.error(f"unknown compression method for {filename}")
 
             print(f"creating: {filename.decode('ascii'):s}")
             with open(filename, "wb") as new_file:
