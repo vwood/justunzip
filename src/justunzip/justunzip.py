@@ -10,8 +10,23 @@ import sys
 import zlib
 import logging
 import click
+from dataclasses import dataclass
 
 logging.basicConfig(level=logging.INFO)
+
+
+@dataclass
+class ZipLocalFileHeader:
+    version: int
+    bitflag: int
+    compression_method: int
+    modification_time: int
+    modification_date: int
+    crc32: int
+    compressed_size: int
+    uncompressed_size: int
+    filename_length: int
+    extra_field_length: int
 
 
 def decompress(archive_filename, dry_run):
@@ -24,6 +39,7 @@ def decompress(archive_filename, dry_run):
         if dry_run:
             print(f"{'Length':10s} Name")
             print(f"{'-'*10} {'-'*4}")
+
         while chunk := f.read(4):
             if len(chunk) < 4:
                 break
@@ -35,38 +51,35 @@ def decompress(archive_filename, dry_run):
             logging.debug(f"found header @ 0x{f.tell() - 4:x}")
 
             chunk = f.read(2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2)
-            header = struct.unpack("<hhhHHLllhh", chunk)
+            header = ZipLocalFileHeader(*struct.unpack("<hhhHHLllhh", chunk))
 
-            is_deflated = header[2] == 8
-            crc_32 = header[5]
-            compressed_size = header[6]
-            decompressed_size = header[7]
-            filename_len = header[8]
-            extra_len = header[9]
+            is_deflated = header.compression_method == 8
 
-            filename = f.read(filename_len)
-            if extra_len > 0:
-                f.read(extra_len)
+            filename = f.read(header.filename_length)
+            if header.extra_field_length > 0:
+                f.read(header.extra_field_length)
 
             if dry_run:
-                print(f"{decompressed_size:10d} {filename.decode('ascii'):s}")
+                print(f"{header.uncompressed_size:10d} {filename.decode('ascii'):s}")
                 continue
 
             dirname = os.path.dirname(filename)
             if len(dirname) > 0:
                 os.makedirs(dirname, exist_ok=True)
 
-            if compressed_size == 0:
+            if header.compressed_size == 0:
                 continue
 
-            contents = f.read(compressed_size)
-            if len(contents) < compressed_size:
+            contents = f.read(header.compressed_size)
+            if len(contents) < header.compressed_size:
                 logging.warn(f"{filename} is truncated")
 
             if is_deflated:
                 try:
                     contents = zlib.decompress(
-                        contents, wbits=-zlib.MAX_WBITS, bufsize=decompressed_size
+                        contents,
+                        wbits=-zlib.MAX_WBITS,
+                        bufsize=header.uncompressed_size,
                     )
                 except zlib.error as e:
                     logging.error(f"error decompressing {filename}")
