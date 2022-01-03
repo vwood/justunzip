@@ -37,7 +37,7 @@ def decompress(archive_filename, dry_run):
     """
     Decompress `filename` into current directory.
     """
-    with open(archive_filename, "rb") as f,
+    with open(archive_filename, "rb") as f,\
          mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
          
         pos = 0
