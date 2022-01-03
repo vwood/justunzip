@@ -13,7 +13,7 @@ import logging
 import click
 from dataclasses import dataclass
 
-logging.basicConfig(filename=__name__, level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 @dataclass
