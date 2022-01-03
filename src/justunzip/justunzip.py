@@ -37,9 +37,10 @@ def decompress(archive_filename, dry_run):
     """
     Decompress `filename` into current directory.
     """
-    with open(archive_filename, "rb") as f,\
-         mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-         
+    with open(archive_filename, "rb") as f, mmap.mmap(
+        f.fileno(), 0, access=mmap.ACCESS_READ
+    ) as mm:
+
         pos = 0
 
         print(f"Archive: {archive_filename}")
@@ -58,14 +59,20 @@ def decompress(archive_filename, dry_run):
 
             header = ZipLocalFileHeader(*struct.unpack("<hhhHHLllhh", chunk))
 
+            # zip file encodings are a mess with multiple non-conformant implementations
             filename = mm[pos : pos + header.filename_length]
+            try:
+                filename = filename.decode("utf8")
+            except:
+                filename = filename.decode("latin1")
+
             pos += header.filename_length
 
             if header.extra_field_length > 0:
                 pos += header.extra_field_length
 
             if dry_run:
-                print(f"{header.uncompressed_size:10d} {filename.decode('ascii'):s}")
+                print(f"{header.uncompressed_size:10d} {filename:s}")
                 continue
 
             dirname = os.path.dirname(filename)
@@ -76,29 +83,25 @@ def decompress(archive_filename, dry_run):
                 next_header = mm.find(b"PK\x03\x04", pos)
                 if next_header == -1:
                     header.compressed_size = len(mm) - pos
-                    logging.warn(f"{filename} lacks a following header, and might be truncated")
+                    logging.warn(
+                        f"{filename} lacks a following header, and might be truncated"
+                    )
                 else:
                     header.compressed_size = next_header - pos
 
             contents = mm[pos : pos + header.compressed_size]
             pos += header.compressed_size
 
-            if len(contents) < header.compressed_size:
-                logging.warn(f"{filename} is truncated")
-
             if header.compression_method == 8:
-                try:
-                    contents = zlib.decompress(
-                        contents,
-                        wbits=-zlib.MAX_WBITS,
-                        bufsize=header.uncompressed_size,
-                    )
-                except zlib.error as e:
-                    logging.error(f"error decompressing {filename}")
+                decompress_obj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+                contents = decompress_obj.decompress(contents)
             elif header.compression_method != 0:
                 logging.error(f"unknown compression method for {filename}")
 
-            print(f"creating: {filename.decode('ascii'):s}")
+            if len(contents) < header.uncompressed_size:
+                logging.warn(f"{filename} is truncated {len(contents)}")
+
+            print(f"creating: {filename:s}")
             with open(filename, "wb") as new_file:
                 new_file.write(contents)
 
