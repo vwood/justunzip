@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="justunzip",
-    version="0.0.8",
+    version="0.0.9",
     license="MIT",
     author="vwood",
     author_email="vwood@vwood.org",
@@ -31,7 +31,7 @@ setuptools.setup(
         "click>=7.1",
     ],
     python_requires=">=3.6",
-    download_url="https://github.com/vwood/justunzip/archive/refs/tags/v0.0.8.tar.gz",
+    download_url="https://github.com/vwood/justunzip/archive/refs/tags/v0.0.9.tar.gz",
     url="https://github.com/vwood/justunzip",
     keywords="zip truncated corrupt zipfile archive unzip",
 )
