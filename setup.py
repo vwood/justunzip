@@ -5,9 +5,11 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+VERSION="0.0.11"
+
 setuptools.setup(
     name="justunzip",
-    version="0.0.10",
+    version=VERSION,
     license="MIT",
     author="vwood",
     author_email="vwood@vwood.org",
@@ -31,7 +33,7 @@ setuptools.setup(
         "click>=7.1",
     ],
     python_requires=">=3.6",
-    download_url="https://github.com/vwood/justunzip/archive/refs/tags/v0.0.10.tar.gz",
+    download_url=f"https://github.com/vwood/justunzip/archive/refs/tags/v{VERSION}.tar.gz",
     url="https://github.com/vwood/justunzip",
     keywords="zip truncated corrupt zipfile archive unzip",
 )
