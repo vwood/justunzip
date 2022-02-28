@@ -101,7 +101,7 @@ def decompress(archive_filename, dry_run):
             if len(contents) < header.uncompressed_size:
                 logging.warn(f"{filename} is truncated {len(contents)}")
 
-            if os.path.dirname(filename) == filename:
+            if os.path.isdir(filename):
                 continue
 
             print(f"creating: {filename:s}")
